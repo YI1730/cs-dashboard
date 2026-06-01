@@ -1,0 +1,18 @@
+# Streamlit secrets（絶対に git に入れない）
+.streamlit/secrets.toml
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+
+# データ（旧 CSV 版の残骸）
+data/
+*.csv
+
+# OS
+.DS_Store
+Thumbs.db
