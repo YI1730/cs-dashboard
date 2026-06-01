@@ -172,14 +172,25 @@ def render_client_tab() -> None:
     advertisers = list_advertisers()
     col_sel, col_new = st.columns([3, 2])
 
+    # 新規追加直後はその広告主を選択状態にする。
+    # selectbox の widget キー(adv_select_box)は「生成後」に session_state で
+    # 書き換えると StreamlitAPIException になるため、非 widget キー
+    # (_pending_advertiser)で受け渡し、widget 生成「前」のここで反映する。
+    pending = st.session_state.pop("_pending_advertiser", None)
+    if pending and pending in advertisers:
+        st.session_state["adv_select_box"] = pending
+
+    # 保持値が候補に無い場合（削除済み広告主など）は先頭へリセット。
+    # この代入も selectbox 生成「前」なので安全。
+    if advertisers and st.session_state.get("adv_select_box") not in advertisers:
+        st.session_state["adv_select_box"] = advertisers[0]
+
     with col_sel:
         if advertisers:
-            cur = st.session_state.get("selected_advertiser")
-            idx = advertisers.index(cur) if cur in advertisers else 0
-            st.selectbox("広告主を選択", advertisers, index=idx, key="selected_advertiser")
+            selected = st.selectbox("広告主を選択", advertisers, key="adv_select_box")
         else:
             st.info("広告主データがありません。右側から新規追加してください。")
-            st.session_state["selected_advertiser"] = None
+            selected = None
 
     with col_new:
         with st.form("frm_add_adv", clear_on_submit=True):
@@ -190,11 +201,14 @@ def render_client_tab() -> None:
                     _flash("warning", "広告主名を入力してください。")
                 else:
                     ensure_advertiser(new_adv)
-                    st.session_state["selected_advertiser"] = new_adv
+                    # widget 生成後なので adv_select_box は直接触らない。
+                    # 非 widget キーに退避し、次回 run の生成前に反映する。
+                    st.session_state["_pending_advertiser"] = new_adv
                     _flash("success", f"「{new_adv}」を追加しました。")
                 st.rerun()
 
-    selected = st.session_state.get("selected_advertiser")
+    # 他タブ互換のため同期（selected_advertiser は非 widget キーなので安全）。
+    st.session_state["selected_advertiser"] = selected
     if not selected:
         return
 
